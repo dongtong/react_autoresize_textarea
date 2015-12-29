@@ -13,7 +13,8 @@ class AutoresizeTextarea extends React.Component{
 
 		this.state = {
 			setOverflowX: true,
-			setOverflowY: true
+			setOverflowY: true,
+      value: this.props.value || "Please enter your content."  
 		}
 
 		this._bind('_init');
@@ -29,6 +30,12 @@ class AutoresizeTextarea extends React.Component{
 			this[method] = this[method].bind(this);
 		});
 	}
+  
+  static get getDefaultProps() {
+    return {
+      content: "Please enter your content."  
+    }
+  }
 
 	_init() {
 		const node = this.refs.autoresize_ta;
@@ -47,7 +54,7 @@ class AutoresizeTextarea extends React.Component{
 		} else {
 			this.heightOffset = parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
 		}
-		// Fix when a textarea is not on document body and heightOffset is Not a Number
+		// textarea不在document上或者heightOffset不是数字
 		if (isNaN(this.heightOffset)) {
 			this.heightOffset = 0;
 		}
@@ -58,7 +65,10 @@ class AutoresizeTextarea extends React.Component{
 	_updateNode() {
 		const node = this.refs.autoresize_ta;
 		const startHeight = node.style.height;
+    
+    this.setState({value: node.value});
 
+    //调整高度
 		this._resize();
 
 		const style = window.getComputedStyle(node, null);
@@ -87,7 +97,7 @@ class AutoresizeTextarea extends React.Component{
 		const originalHeight = node.style.height;
 
 		node.style.height = 'auto';
-
+    
 		let endHeight = node.scrollHeight + this.heightOffset;
 
 		if (node.scrollHeight === 0) {
@@ -133,9 +143,6 @@ class AutoresizeTextarea extends React.Component{
 
 	//分发销毁事件
 	_destroy(node) {
-		if(!(node && node.nodeName && node.nodeName === 'TEXTAREA')) {
-			return;
-		}
 		const event = document.createEvent('Event');
 		event.initEvent('autoresize:destroy', true, false);
 		node.dispatchEvent(event);
@@ -143,18 +150,19 @@ class AutoresizeTextarea extends React.Component{
 
 	//分发更新事件
 	_update(node) {
-		if(!(node && node.nodeName && node.nodeName === 'TEXTAREA')) {
-			return;
-		}
 		const event = document.createEvent('Event');
 		event.initEvent('autoresize:update', true, false);
 		node.dispatchEvent(event);
 	}
 
+
   render() {
   	return (
-  		<textarea ref="autoresize_ta">
-  			{this.props.children}
+  		<textarea ref="autoresize_ta" 
+        style={this.props.style} 
+        value={this.state.value} 
+        onChange={this._updateNode}>
+  			
   		</textarea>
   	);
   }
@@ -164,6 +172,7 @@ class AutoresizeTextarea extends React.Component{
   	const node = self.refs.autoresize_ta;
   	self.clientWidth = node.clientWidth;
 
+    //初始化
   	self._init();
   	self._changeOverflow();
   	self._resize();
@@ -175,12 +184,12 @@ class AutoresizeTextarea extends React.Component{
   		}
   	}
 
-  	const destroy = function(style){
+  	const destroyNode = function(style){
   		window.removeEventListener('resize', pageResize, false);
 			node.removeEventListener('input', self._updateNode, false);
 			node.removeEventListener('keyup', self._updateNode, false);
-			node.removeEventListener('autosize:destroy', self._destroy, false);
-			node.removeEventListener('autosize:update', self._update, false);
+			node.removeEventListener('autosize:destroy', self.destroyNode, false);
+			node.removeEventListener('autosize:update', self._updateNode, false);
 
 			Object.keys(style).forEach(key => {
 				node.style[key] = style[key];
@@ -192,20 +201,19 @@ class AutoresizeTextarea extends React.Component{
 			overflowX: node.style.overflowX,
 			wordWrap: node.style.wordWrap
   	});
-
-  	node.addEventListener('autosize:destroy', this._destroy, false);
-
-		// IE9 does not fire onpropertychange or oninput for deletions,
-		// so binding to onkeyup to catch most of those events.
-		// There is no way that I know of to detect something like 'cut' in IE9.
+    
+    //---绑定事件---
+  	node.addEventListener('autosize:destroy', this.destroyNode, false);
+		// IE9 在删除时无法触发onpropertychange和oninput事件,
+		// 使用keyup捕捉大多数事件
+		// 目前在IE9中无法侦听到'cut'之类的事件
 		if ('onpropertychange' in node && 'oninput' in node) {
 			node.addEventListener('keyup', self._updateNode, false);
 		}
-
 		window.addEventListener('resize', pageResize, false);
 		node.addEventListener('input', self._updateNode, false);
-		node.addEventListener('autosize:update', self._update, false);
-		
+		node.addEventListener('autosize:update', self._updateNode, false);
+    //---绑定事件---
 
 		if (this.state.setOverflowX) {
 			node.style.overflowX = 'hidden';
@@ -214,26 +222,28 @@ class AutoresizeTextarea extends React.Component{
 
 		self._init();
 
-
-  	// self.autoresize = (el, options) => {
-  	// 	if(el) {
-  	// 		Array.prototype.forEach.call(el.length ? el : [el], x => assign(x, options));
-  	// 	}
-  	// 	return el;
-  	// }
-
   	//绑定当前Node destroy事件
   	node.destroy = () => {
-  		node._bind('_destroy');
+      self._destroy(node);
   	}
 
   	//绑定当前Node update事件
   	node.update = () => {
-  		node._bind('_update');
-  	}
-
+      self._update(node);
+  	}  
 
   }
+  
+  componentWillUnmount() {
+    const node = self.refs.autoresize_ta;
+    
+    node.destroy = null;
+    node.update = null;
+  }
+}
+
+AutoresizeTextarea.defaultProps = {
+  content: "Please enter your content."  
 }
 
 export default AutoresizeTextarea
