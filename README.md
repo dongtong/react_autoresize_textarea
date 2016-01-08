@@ -24,5 +24,5 @@ Textarea控件在初始化时内容可变，需要根据内容自动调整高度
 
 属性名称  | 类型 | 默认值 | 可选值
 ------------- | ------------- | --------| -------------
-value  | string | null |  textarea内容，默认是"Please enter your content."
+value  | string | Please enter your content. |  textarea内容
 style  | object   | null| 常用style样式，如{width: 200, height: 200}
